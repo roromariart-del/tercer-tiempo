@@ -1,0 +1,74 @@
+.home { padding: 16px; }
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.home-header h1 {
+  font-size: 22px;
+  color: #1a5c2a;
+  font-weight: 700;
+}
+
+.bell { font-size: 22px; cursor: pointer; }
+
+.section h2 {
+  font-size: 13px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.reto-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reto-info { display: flex; align-items: center; gap: 10px; }
+
+.avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #EAF3DE;
+  color: #3B6D11;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+}
+
+.avatar.azul { background: #E6F1FB; color: #185FA5; }
+
+.reto-nombre { font-size: 13px; font-weight: 600; margin: 0; }
+.reto-fecha { font-size: 11px; color: #999; margin: 0; }
+
+.badge {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.badge.pendiente { background: #FAEEDA; color: #854F0B; }
+.badge.aceptado { background: #EAF3DE; color: #3B6D11; }
+
+.btn-primary {
+  width: 100%;
+  background: #1a5c2a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+}

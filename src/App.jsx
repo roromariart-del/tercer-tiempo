@@ -541,27 +541,41 @@ export default function App() {
       const u = JSON.parse(guardado)
       setUsuario(u)
       if (u.equipo_id) {
-        const { data } = await supabase
-          .from('equipos')
-          .select('*')
-          .eq('id', u.equipo_id)
-          .single()
-        if (data) setEquipo(data)
+        try {
+          const { data } = await supabase
+            .from('equipos')
+            .select('*')
+            .eq('id', u.equipo_id)
+            .single()
+          if (data) setEquipo(data)
+        } catch(e) {
+          console.log('Error cargando equipo:', e)
+        }
       }
     } catch (e) {
+      console.log('Error iniciando:', e)
       localStorage.clear()
     } finally {
       setVerificando(false)
     }
   }
 
-  const handleLogin = (u) => {
+  const handleLogin = async (u) => {
     localStorage.setItem('usuario_tt', JSON.stringify(u))
     setUsuario(u)
     if (u.equipo_id) {
-      supabase.from('equipos').select('*').eq('id', u.equipo_id).single()
-        .then(({ data }) => { if (data) setEquipo(data) })
+      try {
+        const { data } = await supabase
+          .from('equipos')
+          .select('*')
+          .eq('id', u.equipo_id)
+          .single()
+        if (data) setEquipo(data)
+      } catch(e) {
+        console.log('Error:', e)
+      }
     }
+    setVerificando(false)
   }
 
   const handleEquipoCreado = (e) => {

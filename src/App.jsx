@@ -522,14 +522,77 @@ function NavBar() {
   )
 }
 
-export default function App() {
-  const [usuario, setUsuario] = useState(null)
-  const [equipo, setEquipo] = useState(null)
-  const [verificando, setVerificando] = useState(true)
+  export default function App() {
+    const [usuario, setUsuario] = useState(null)
+    const [equipo, setEquipo] = useState(null)
+    const [verificando, setVerificando] = useState(true)
 
-  useEffect(() => {
-    iniciar()
-  }, [])
+    useEffect(() => {
+      const guardado = localStorage.getItem('usuario_tt')
+      console.log('1. guardado:', guardado ? 'existe' : 'no existe')
+      if (guardado) {
+        const u = JSON.parse(guardado)
+        console.log('2. usuario:', u.nombre, 'equipo_id:', u.equipo_id)
+        setUsuario(u)
+        if (u.equipo_id) {
+          console.log('3. cargando equipo...')
+          supabase.from('equipos').select('*').eq('id', u.equipo_id).single()
+            .then(({ data, error }) => {
+              console.log('4. equipo data:', data, 'error:', error)
+              if (data) setEquipo(data)
+              setVerificando(false)
+            })
+        } else {
+          console.log('3. sin equipo_id')
+          setVerificando(false)
+        }
+      } else {
+        console.log('2. no hay usuario guardado')
+        setVerificando(false)
+      }
+    }, [])
+
+    const handleLogin = (u) => {
+      console.log('login:', u)
+      localStorage.setItem('usuario_tt', JSON.stringify(u))
+      setUsuario(u)
+      setVerificando(false)
+    }
+
+    const handleEquipoCreado = (e) => {
+      setEquipo(e)
+      const u = JSON.parse(localStorage.getItem('usuario_tt'))
+      u.equipo_id = e.id
+      localStorage.setItem('usuario_tt', JSON.stringify(u))
+      setUsuario({...u})
+    }
+
+    console.log('render - verificando:', verificando, 'usuario:', usuario?.nombre, 'equipo:', equipo?.nombre)
+
+    if (verificando) return (
+      <div style={{background:'#060d06', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>
+        <p style={{color:'#2ecc40', fontFamily:'Teko', fontSize:'24px', letterSpacing:'2px'}}>CARGANDO...</p>
+      </div>
+    )
+
+    if (!usuario) return <Login onLogin={handleLogin} />
+    if (!usuario.equipo_id) return <CrearEquipo usuario={usuario} onEquipoCreado={handleEquipoCreado} />
+
+    return (
+      <BrowserRouter>
+        <div style={{maxWidth:'480px', margin:'0 auto', minHeight:'100vh', background:C.bg, paddingBottom:'70px'}}>
+          <Routes>
+            <Route path="/" element={<Home usuario={usuario} equipo={equipo} />} />
+            <Route path="/retos" element={<Retos usuario={usuario} equipo={equipo} />} />
+            <Route path="/equipo" element={<MiEquipo usuario={usuario} equipo={equipo} onEquipoActualizado={setEquipo} />} />
+            <Route path="/canchas" element={<Canchas />} />
+            <Route path="/admin/canchas" element={<AdminCanchas />} />
+          </Routes>
+          <NavBar />
+        </div>
+      </BrowserRouter>
+    )
+  }
 
   const iniciar = async () => {
     try {
@@ -560,21 +623,9 @@ export default function App() {
     }
   }
 
-  const handleLogin = async (u) => {
+  const handleLogin = (u) => {
     localStorage.setItem('usuario_tt', JSON.stringify(u))
     setUsuario(u)
-    if (u.equipo_id) {
-      try {
-        const { data } = await supabase
-          .from('equipos')
-          .select('*')
-          .eq('id', u.equipo_id)
-          .single()
-        if (data) setEquipo(data)
-      } catch(e) {
-        console.log('Error:', e)
-      }
-    }
     setVerificando(false)
   }
 

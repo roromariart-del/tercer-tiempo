@@ -182,46 +182,92 @@ function Retos({ usuario }) {
   )
 }
 
-function MiEquipo() {
+function MiEquipo({ usuario, equipo, onEquipoActualizado }) {
   const [mostrarRegistro, setMostrarRegistro] = useState(false)
+  const [mostrarJugador, setMostrarJugador] = useState(false)
   const [partidos, setPartidos] = useState([])
-  const [nuevoPartido, setNuevoPartido] = useState({rival:'', golesA:'', golesB:''})
+  const [jugadores, setJugadores] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [nuevoPartido, setNuevoPartido] = useState({rival:'', golesA:'', golesB:''})
+  const [nuevoJugador, setNuevoJugador] = useState({nombre:'', telefono:'', posicion:''})
 
   useEffect(() => {
-    cargarPartidos()
-  }, [])
+    if (equipo) {
+      cargarPartidos()
+      cargarJugadores()
+    }
+  }, [equipo])
 
   const cargarPartidos = async () => {
     setCargando(true)
     const { data, error } = await supabase
       .from('partidos')
       .select('*')
+      .eq('equipo_id', equipo.id)
       .order('created_at', { ascending: false })
     if (!error) setPartidos(data)
     setCargando(false)
   }
 
-const registrar = async () => {
-  if (!nuevoPartido.rival || nuevoPartido.golesA === '' || nuevoPartido.golesB === '') {
-    alert('Completá todos los campos')
-    return
+  const cargarJugadores = async () => {
+    const { data } = await supabase
+      .from('equipo_jugadores')
+      .select('*, usuarios(nombre, telefono, zona)')
+      .eq('equipo_id', equipo.id)
+    if (data) setJugadores(data)
   }
-  const gA = parseInt(nuevoPartido.golesA)
-  const gB = parseInt(nuevoPartido.golesB)
-  const resultado = gA > gB ? 'ganado' : gA < gB ? 'perdido' : 'empate'
-  const { data, error } = await supabase
-    .from('partidos')
-    .insert([{ rival: nuevoPartido.rival, goles_a: gA, goles_b: gB, resultado, equipo_id: null }])
-    .select()
-  if (error) {
-    alert('Error: ' + error.message)
-  } else {
-    setNuevoPartido({rival:'', golesA:'', golesB:''})
-    setMostrarRegistro(false)
-    cargarPartidos()
+
+  const registrarPartido = async () => {
+    if (!nuevoPartido.rival || nuevoPartido.golesA === '' || nuevoPartido.golesB === '') return
+    const gA = parseInt(nuevoPartido.golesA)
+    const gB = parseInt(nuevoPartido.golesB)
+    const resultado = gA > gB ? 'ganado' : gA < gB ? 'perdido' : 'empate'
+    const { error } = await supabase
+      .from('partidos')
+      .insert([{ rival: nuevoPartido.rival, goles_a: gA, goles_b: gB, resultado, equipo_id: equipo.id }])
+    if (!error) {
+      setNuevoPartido({rival:'', golesA:'', golesB:''})
+      setMostrarRegistro(false)
+      cargarPartidos()
+    }
   }
-}
+
+  const agregarJugador = async () => {
+    if (!nuevoJugador.nombre || !nuevoJugador.telefono) {
+      alert('Completá nombre y teléfono')
+      return
+    }
+    let usuarioData
+    const { data: existente } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('telefono', nuevoJugador.telefono)
+      .single()
+
+    if (existente) {
+      usuarioData = existente
+    } else {
+      const { data: nuevo } = await supabase
+        .from('usuarios')
+        .insert([{ nombre: nuevoJugador.nombre, telefono: nuevoJugador.telefono, equipo_id: equipo.id }])
+        .select()
+        .single()
+      usuarioData = nuevo
+    }
+
+    if (usuarioData) {
+      await supabase
+        .from('equipo_jugadores')
+        .insert([{ equipo_id: equipo.id, usuario_id: usuarioData.id, posicion: nuevoJugador.posicion, es_capitan: false }])
+      await supabase
+        .from('usuarios')
+        .update({ equipo_id: equipo.id })
+        .eq('id', usuarioData.id)
+      setNuevoJugador({nombre:'', telefono:'', posicion:''})
+      setMostrarJugador(false)
+      cargarJugadores()
+    }
+  }
 
   const ganes = partidos.filter(p => p.resultado === 'ganado').length
   const empates = partidos.filter(p => p.resultado === 'empate').length
@@ -230,95 +276,115 @@ const registrar = async () => {
   return (
     <div style={{background:'#0d1117', minHeight:'100vh'}}>
       <div style={{...headerBg, padding:'48px 16px 32px'}}>
-        <div style={{background:C.glass,backdropFilter:'blur(12px)',border:`1px solid ${C.cardBorder}`,borderRadius:'16px',padding:'20px',textAlign:'center'}}>
-          <div style={{width:'64px',height:'64px',borderRadius:'12px',background:C.greenDim,border:`2px solid ${C.green}`,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px',fontSize:'30px'}}>⚽</div>
-          <p style={{fontSize:'28px',fontFamily:'Teko',fontWeight:700,color:C.white,margin:'0 0 4px',letterSpacing:'2px'}}>LOS CRACKS DE HEREDIA</p>
-          <p style={{fontSize:'12px',color:C.gray,margin:0}}>Heredia · 8 jugadores</p>
+        <div style={{background:C.glass, backdropFilter:'blur(12px)', border:`1px solid ${C.cardBorder}`, borderRadius:'16px', padding:'20px', textAlign:'center'}}>
+          <div style={{width:'64px', height:'64px', borderRadius:'12px', background:C.greenDim, border:`2px solid ${C.green}`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px', fontSize:'30px'}}>⚽</div>
+          <p style={{fontSize:'28px', fontFamily:'Teko', fontWeight:700, color:C.white, margin:'0 0 4px', letterSpacing:'2px'}}>{equipo?.nombre?.toUpperCase() || 'MI EQUIPO'}</p>
+          <p style={{fontSize:'12px', color:C.gray, margin:0}}>{equipo?.zona || ''} · {jugadores.length} jugadores</p>
         </div>
       </div>
 
       <div style={{padding:'16px'}}>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'20px'}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px', marginBottom:'20px'}}>
           {[
             {label:'GANADOS', valor:ganes, color:C.green},
             {label:'EMPATES', valor:empates, color:C.amber},
             {label:'PERDIDOS', valor:perdidos, color:'#ff3b3b'},
           ].map(s => (
-            <div key={s.label} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'12px',padding:'12px',textAlign:'center'}}>
-              <p style={{fontSize:'28px',fontFamily:'Teko',fontWeight:700,color:s.color,margin:0,lineHeight:1}}>{s.valor}</p>
-              <p style={{fontSize:'10px',color:C.gray,margin:'4px 0 0',fontFamily:'Teko',letterSpacing:'0.1em'}}>{s.label}</p>
+            <div key={s.label} style={{background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'12px', textAlign:'center'}}>
+              <p style={{fontSize:'28px', fontFamily:'Teko', fontWeight:700, color:s.color, margin:0, lineHeight:1}}>{s.valor}</p>
+              <p style={{fontSize:'10px', color:C.gray, margin:'4px 0 0', fontFamily:'Teko', letterSpacing:'0.1em'}}>{s.label}</p>
             </div>
           ))}
         </div>
 
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
-          <p style={{fontSize:'11px',color:C.gray,fontFamily:'Teko',letterSpacing:'0.2em',margin:0}}>HISTORIAL DE PARTIDOS</p>
-          <button onClick={() => setMostrarRegistro(!mostrarRegistro)} style={{background:C.green,color:'#000',border:'none',borderRadius:'8px',padding:'6px 14px',fontSize:'13px',fontFamily:'Teko',fontWeight:700,cursor:'pointer'}}>+ REGISTRAR</button>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
+          <p style={{fontSize:'11px', color:C.gray, fontFamily:'Teko', letterSpacing:'0.2em', margin:0}}>HISTORIAL DE PARTIDOS</p>
+          <button onClick={() => setMostrarRegistro(!mostrarRegistro)} style={{background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'6px 14px', fontSize:'13px', fontFamily:'Teko', fontWeight:700, cursor:'pointer'}}>+ REGISTRAR</button>
         </div>
 
         {mostrarRegistro && (
-          <div style={{background:C.glass,border:`1px solid ${C.cardBorder}`,borderRadius:'12px',padding:'16px',marginBottom:'12px'}}>
-            <p style={{fontSize:'16px',fontFamily:'Teko',fontWeight:700,color:C.white,margin:'0 0 12px',letterSpacing:'1px'}}>REGISTRAR PARTIDO</p>
+          <div style={{background:C.glass, border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'16px', marginBottom:'12px'}}>
+            <p style={{fontSize:'16px', fontFamily:'Teko', fontWeight:700, color:C.white, margin:'0 0 12px', letterSpacing:'1px'}}>REGISTRAR PARTIDO</p>
             <input type="text" placeholder="Nombre del rival"
               value={nuevoPartido.rival}
               onChange={e => setNuevoPartido({...nuevoPartido, rival:e.target.value})}
-              style={{width:'100%',padding:'10px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,marginBottom:'8px',fontSize:'13px',background:'rgba(255,255,255,0.05)',color:C.white}}
+              style={{width:'100%', padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'8px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
             />
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'12px'}}>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'12px'}}>
               <input type="number" placeholder="Tus goles"
                 value={nuevoPartido.golesA}
                 onChange={e => setNuevoPartido({...nuevoPartido, golesA:e.target.value})}
-                style={{padding:'10px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,fontSize:'13px',background:'rgba(255,255,255,0.05)',color:C.white}}
+                style={{padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
               />
               <input type="number" placeholder="Goles rival"
                 value={nuevoPartido.golesB}
                 onChange={e => setNuevoPartido({...nuevoPartido, golesB:e.target.value})}
-                style={{padding:'10px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,fontSize:'13px',background:'rgba(255,255,255,0.05)',color:C.white}}
+                style={{padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
               />
             </div>
-            <button onClick={registrar} style={{width:'100%',background:C.green,color:'#000',border:'none',borderRadius:'8px',padding:'12px',fontSize:'16px',fontFamily:'Teko',fontWeight:700,cursor:'pointer',letterSpacing:'1px'}}>GUARDAR RESULTADO</button>
+            <button onClick={registrarPartido} style={{width:'100%', background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'12px', fontSize:'16px', fontFamily:'Teko', fontWeight:700, cursor:'pointer', letterSpacing:'1px'}}>GUARDAR RESULTADO</button>
           </div>
         )}
 
         {cargando ? (
-          <p style={{color:C.gray,textAlign:'center',fontFamily:'Teko',fontSize:'16px'}}>Cargando partidos...</p>
+          <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>Cargando...</p>
         ) : partidos.length === 0 ? (
-          <p style={{color:C.gray,textAlign:'center',fontFamily:'Teko',fontSize:'16px'}}>No hay partidos registrados aún</p>
+          <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>No hay partidos registrados aún</p>
         ) : partidos.map((p, i) => (
-          <div key={i} style={{background:C.card,border:`1px solid ${p.resultado==='ganado'?C.cardBorder:p.resultado==='perdido'?'rgba(255,59,59,0.2)':'rgba(255,170,0,0.2)'}`,borderRadius:'12px',padding:'14px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div key={i} style={{background:C.card, border:`1px solid ${p.resultado==='ganado'?C.cardBorder:p.resultado==='perdido'?'rgba(255,59,59,0.2)':'rgba(255,170,0,0.2)'}`, borderRadius:'12px', padding:'14px', marginBottom:'8px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div>
-              <p style={{fontSize:'17px',fontFamily:'Raleway',fontWeight:400,color:C.white,margin:'0 0 2px'}}>{p.rival}</p>
-              <p style={{fontSize:'11px',color:C.gray,margin:0}}>{new Date(p.fecha).toLocaleDateString('es-CR')}</p>
+              <p style={{fontSize:'17px', fontFamily:'Raleway', fontWeight:400, color:C.white, margin:'0 0 2px'}}>{p.rival}</p>
+              <p style={{fontSize:'11px', color:C.gray, margin:0}}>{new Date(p.fecha).toLocaleDateString('es-CR')}</p>
             </div>
             <div style={{textAlign:'right'}}>
-              <p style={{fontSize:'24px',fontFamily:'Teko',fontWeight:700,color:p.resultado==='ganado'?C.green:p.resultado==='perdido'?'#ff3b3b':C.amber,margin:0,lineHeight:1}}>{p.goles_a} - {p.goles_b}</p>
-              <p style={{fontSize:'10px',color:p.resultado==='ganado'?C.green:p.resultado==='perdido'?'#ff3b3b':C.amber,margin:'3px 0 0',fontFamily:'Teko',letterSpacing:'0.1em'}}>{p.resultado.toUpperCase()}</p>
+              <p style={{fontSize:'24px', fontFamily:'Teko', fontWeight:700, color:p.resultado==='ganado'?C.green:p.resultado==='perdido'?'#ff3b3b':C.amber, margin:0, lineHeight:1}}>{p.goles_a} - {p.goles_b}</p>
+              <p style={{fontSize:'10px', color:p.resultado==='ganado'?C.green:p.resultado==='perdido'?'#ff3b3b':C.amber, margin:'3px 0 0', fontFamily:'Teko', letterSpacing:'0.1em'}}>{p.resultado.toUpperCase()}</p>
             </div>
           </div>
         ))}
 
-        <p style={{fontSize:'11px',color:C.gray,fontFamily:'Teko',letterSpacing:'0.2em',margin:'20px 0 12px'}}>INTEGRANTES</p>
-        {[
-          {ini:'CR', nombre:'Carlos Rojas', pos:'Portero · Capitán', capitan:true},
-          {ini:'AM', nombre:'Andrés Mora', pos:'Delantero', capitan:false},
-          {ini:'JS', nombre:'José Solano', pos:'Defensa', capitan:false},
-        ].map(j => (
-          <div key={j.nombre} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'12px',padding:'12px',marginBottom:'8px',display:'flex',alignItems:'center',gap:'12px'}}>
-            <div style={{width:'42px',height:'42px',borderRadius:'8px',background:C.greenDim,border:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px',fontFamily:'Teko',fontWeight:700,color:C.green,flexShrink:0}}>{j.ini}</div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', margin:'20px 0 12px'}}>
+          <p style={{fontSize:'11px', color:C.gray, fontFamily:'Teko', letterSpacing:'0.2em', margin:0}}>INTEGRANTES</p>
+          <button onClick={() => setMostrarJugador(!mostrarJugador)} style={{background:'transparent', color:C.green, border:`1px solid ${C.green}`, borderRadius:'8px', padding:'6px 14px', fontSize:'13px', fontFamily:'Teko', fontWeight:700, cursor:'pointer'}}>+ AGREGAR</button>
+        </div>
+
+        {mostrarJugador && (
+          <div style={{background:C.glass, border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'16px', marginBottom:'12px'}}>
+            <p style={{fontSize:'16px', fontFamily:'Teko', fontWeight:700, color:C.white, margin:'0 0 12px', letterSpacing:'1px'}}>AGREGAR JUGADOR</p>
+            <input type="text" placeholder="Nombre del jugador"
+              value={nuevoJugador.nombre}
+              onChange={e => setNuevoJugador({...nuevoJugador, nombre:e.target.value})}
+              style={{width:'100%', padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'8px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
+            />
+            <input type="tel" placeholder="Teléfono"
+              value={nuevoJugador.telefono}
+              onChange={e => setNuevoJugador({...nuevoJugador, telefono:e.target.value})}
+              style={{width:'100%', padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'8px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
+            />
+            <input type="text" placeholder="Posición (ej: Delantero)"
+              value={nuevoJugador.posicion}
+              onChange={e => setNuevoJugador({...nuevoJugador, posicion:e.target.value})}
+              style={{width:'100%', padding:'10px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'12px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}}
+            />
+            <button onClick={agregarJugador} style={{width:'100%', background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'12px', fontSize:'16px', fontFamily:'Teko', fontWeight:700, cursor:'pointer', letterSpacing:'1px'}}>GUARDAR JUGADOR</button>
+          </div>
+        )}
+
+        {jugadores.map((j, i) => (
+          <div key={i} style={{background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'12px', marginBottom:'8px', display:'flex', alignItems:'center', gap:'12px'}}>
+            <div style={{width:'42px', height:'42px', borderRadius:'8px', background:C.greenDim, border:`1px solid ${C.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'15px', fontFamily:'Teko', fontWeight:700, color:C.green, flexShrink:0}}>
+              {j.usuarios?.nombre?.charAt(0).toUpperCase() || '?'}
+            </div>
             <div style={{flex:1}}>
-              <p style={{fontSize:'15px',fontFamily:'Raleway',fontWeight:400,margin:0,color:C.white}}>{j.nombre}</p>
-              <p style={{fontSize:'11px',color:C.gray,margin:0}}>{j.pos}</p>
+              <p style={{fontSize:'15px', fontFamily:'Raleway', fontWeight:400, margin:0, color:C.white}}>{j.usuarios?.nombre}</p>
+              <p style={{fontSize:'11px', color:C.gray, margin:0}}>{j.posicion || 'Sin posición'}{j.es_capitan ? ' · Capitán ⭐' : ''}</p>
             </div>
-            {j.capitan && <span style={{fontSize:'14px'}}>⭐</span>}
           </div>
         ))}
-
-        <button style={{width:'100%',background:'transparent',color:C.green,border:`1px solid ${C.green}`,borderRadius:'12px',padding:'14px',fontSize:'18px',fontFamily:'Teko',fontWeight:700,cursor:'pointer',marginTop:'8px',letterSpacing:'1px'}}>+ AGREGAR JUGADOR</button>
       </div>
     </div>
   )
 }
-
 function Canchas() {
   const [canchas, setCanchas] = useState([])
   const [cargando, setCargando] = useState(true)

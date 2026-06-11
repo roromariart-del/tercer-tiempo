@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { supabase } from './supabase.js'
 import Login from './pages/Login.jsx'
+import CrearEquipo from './pages/CrearEquipo.jsx'
 
 const C = {
   bg: '#060d06',
@@ -400,26 +401,62 @@ function NavBar() {
 
 export default function App() {
   const [usuario, setUsuario] = useState(null)
+  const [equipo, setEquipo] = useState(null)
+  const [verificando, setVerificando] = useState(true)
 
   useEffect(() => {
     const u = localStorage.getItem('usuario_tt')
-    if (u) setUsuario(JSON.parse(u))
+    if (u) {
+      const usuarioParsed = JSON.parse(u)
+      setUsuario(usuarioParsed)
+      cargarEquipo(usuarioParsed)
+    } else {
+      setVerificando(false)
+    }
   }, [])
+
+  const cargarEquipo = async (u) => {
+    if (u.equipo_id) {
+      const { data } = await supabase
+        .from('equipos')
+        .select('*, equipo_jugadores(*, usuarios(*))')
+        .eq('id', u.equipo_id)
+        .single()
+      if (data) setEquipo(data)
+    }
+    setVerificando(false)
+  }
 
   const handleLogin = (u) => {
     localStorage.setItem('usuario_tt', JSON.stringify(u))
     setUsuario(u)
+    cargarEquipo(u)
   }
 
+  const handleEquipoCreado = (e) => {
+    setEquipo(e)
+    const u = JSON.parse(localStorage.getItem('usuario_tt'))
+    u.equipo_id = e.id
+    localStorage.setItem('usuario_tt', JSON.stringify(u))
+    setUsuario(u)
+  }
+
+  if (verificando) return (
+    <div style={{background:'#060d06', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <p style={{color:'#2ecc40', fontFamily:'Teko', fontSize:'24px', letterSpacing:'2px'}}>CARGANDO...</p>
+    </div>
+  )
+
   if (!usuario) return <Login onLogin={handleLogin} />
+  if (!usuario.equipo_id) return <CrearEquipo usuario={usuario} onEquipoCreado={handleEquipoCreado} />
 
   return (
     <BrowserRouter>
       <div style={{maxWidth:'480px', margin:'0 auto', minHeight:'100vh', background:C.bg, paddingBottom:'70px'}}>
         <Routes>
-          <Route path="/" element={<Home usuario={usuario} />} />
-          <Route path="/retos" element={<Retos usuario={usuario} />} />
-          <Route path="/equipo" element={<MiEquipo usuario={usuario} />} />
+          <Route path="/" element={<Home usuario={usuario} equipo={equipo} />} />
+          <Route path="/retos" element={<Retos usuario={usuario} equipo={equipo} />} />
+          <Route path="/equipo" element={<MiEquipo usuario={usuario} equipo={equipo} onEquipoActualizado={setEquipo} />} />
           <Route path="/canchas" element={<Canchas />} />
         </Routes>
         <NavBar />

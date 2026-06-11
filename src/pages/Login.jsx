@@ -8,13 +8,40 @@ export default function Login({ onLogin }) {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
-  const entrar = async () => {
-    if (!nombre || !telefono) {
-      setError('Completá tu nombre y teléfono')
-      return
+const entrar = async () => {
+  if (!nombre || !telefono) {
+    setError('Completá tu nombre y teléfono')
+    return
+  }
+  setCargando(true)
+  setError('')
+
+  try {
+    const { data: existente } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('telefono', telefono)
+      .maybeSingle()
+
+    if (existente) {
+      onLogin(existente)
+    } else {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .insert([{ nombre, telefono, zona }])
+        .select()
+        .single()
+      if (error) {
+        setError('Error al registrarse: ' + error.message)
+      } else {
+        onLogin(data)
+      }
     }
-    setCargando(true)
-    setError('')
+  } catch(e) {
+    setError('Error de conexión: ' + e.message)
+  }
+  setCargando(false)
+}
 
     const { data: existente } = await supabase
       .from('usuarios')

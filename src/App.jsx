@@ -527,16 +527,16 @@ export default function App() {
   const [equipo, setEquipo] = useState(null)
   const [verificando, setVerificando] = useState(true)
 
-  useEffect(() => {
-    const u = localStorage.getItem('usuario_tt')
-    if (u) {
-      const usuarioParsed = JSON.parse(u)
-      setUsuario(usuarioParsed)
-      cargarEquipo(usuarioParsed)
-    } else {
-      setVerificando(false)
-    }
-  }, [])
+ useEffect(() => {
+  const u = localStorage.getItem('usuario_tt')
+  if (u) {
+    const usuarioParsed = JSON.parse(u)
+    setUsuario(usuarioParsed)
+    cargarEquipo(usuarioParsed)
+  } else {
+    setVerificando(false)
+  } 
+ }, [])
 
   const cargarEquipo = async (u) => {
     if (u.equipo_id) {

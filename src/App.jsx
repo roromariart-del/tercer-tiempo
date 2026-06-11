@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { supabase } from './supabase.js'
 import Login from './pages/Login.jsx'
 import CrearEquipo from './pages/CrearEquipo.jsx'
+import AdminCanchas from './pages/AdminCanchas.jsx'
 
 const C = {
   bg: '#060d06',
@@ -22,51 +23,94 @@ const headerBg = {
   background: "linear-gradient(180deg, rgba(6,13,6,0.2) 0%, rgba(6,13,6,0.6) 50%, #060d06 100%), url('/cancha.jpg') center/cover no-repeat",
 }
 
-function Home() {
+function Home({ usuario, equipo }) {
+  const [retos, setRetos] = useState([])
+  const [proximoPartido, setProximoPartido] = useState(null)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    if (equipo) cargarDatos()
+  }, [equipo])
+
+  const cargarDatos = async () => {
+    setCargando(true)
+
+    // Cargar retos pendientes
+    const { data: retosData } = await supabase
+      .from('retos')
+      .select('*, equipos(nombre, zona)')
+      .eq('estado', 'pendiente')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    if (retosData) setRetos(retosData)
+
+    // Cargar próximo partido aceptado
+    const { data: proximoData } = await supabase
+      .from('retos')
+      .select('*, equipos(nombre, zona)')
+      .eq('estado', 'aceptado')
+      .gte('fecha', new Date().toISOString().split('T')[0])
+      .order('fecha', { ascending: true })
+      .limit(1)
+      .single()
+    if (proximoData) setProximoPartido(proximoData)
+
+    setCargando(false)
+  }
+
   return (
     <div style={{background:C.bg, minHeight:'100vh'}}>
       {/* Hero */}
       <div style={{...headerBg, padding:'100px 16px 40px', textAlign:'center', position:'relative'}}>
-        <p style={{fontSize:'11px',color:C.white,fontFamily:'Raleway',fontWeight:400,letterSpacing:'0.3em',margin:'0 0 4px'}}>BIENVENIDO</p>
-        <h1 style={{fontSize:'52px',fontFamily:'Teko',fontWeight:700,color:C.white,letterSpacing:'3px',margin:'0 0 32px',lineHeight:1}}>TERCER TIEMPO</h1>
+        <p style={{fontSize:'11px', color:C.green, fontFamily:'Teko', fontWeight:700, letterSpacing:'0.3em', margin:'0 0 4px'}}>BIENVENIDO</p>
+        <h1 style={{fontSize:'52px', fontFamily:'Teko', fontWeight:700, color:C.white, letterSpacing:'3px', margin:'0 0 32px', lineHeight:1}}>TERCER TIEMPO</h1>
 
-        {/* Próximo partido card */}
-        <div style={{background:C.glass,backdropFilter:'blur(12px)',border:`1px solid ${C.cardBorder}`,borderRadius:'16px',padding:'18px',textAlign:'left'}}>
-          <p style={{fontSize:'10px',color:C.green,fontFamily:'Raleway',fontWeight:400,letterSpacing:'0.2em',margin:'0 0 8px'}}>⚽ PRÓXIMO PARTIDO</p>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <p style={{fontSize:'26px',fontFamily:'Raleway',fontWeight:400,color:C.white,margin:'0 0 4px',letterSpacing:'1px'}}>TEAM COYOL</p>
-              <p style={{fontSize:'12px',color:'rgba(255,255,255,0.6)',margin:0}}>Dom 15 jun · 4:00pm · Alajuela</p>
+        {/* Próximo partido */}
+        {proximoPartido ? (
+          <div style={{background:C.glass, backdropFilter:'blur(12px)', border:`1px solid ${C.cardBorder}`, borderRadius:'16px', padding:'18px', textAlign:'left'}}>
+            <p style={{fontSize:'10px', color:C.green, fontFamily:'Teko', fontWeight:700, letterSpacing:'0.2em', margin:'0 0 8px'}}>⚽ PRÓXIMO PARTIDO</p>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div>
+                <p style={{fontSize:'26px', fontFamily:'Teko', fontWeight:700, color:C.white, margin:'0 0 4px', letterSpacing:'1px'}}>{proximoPartido.equipos?.nombre?.toUpperCase() || 'POR CONFIRMAR'}</p>
+                <p style={{fontSize:'12px', color:'rgba(255,255,255,0.6)', margin:0}}>{proximoPartido.fecha} · {proximoPartido.hora} · {proximoPartido.zona}</p>
+              </div>
+              <span style={{fontSize:'11px', padding:'5px 12px', borderRadius:'6px', background:C.green, color:'#000', fontFamily:'Teko', fontWeight:700, letterSpacing:'0.1em'}}>ACEPTADO</span>
             </div>
-            <span style={{fontSize:'11px',padding:'5px 12px',borderRadius:'6px',background:C.green,color:'#000',fontFamily:'Raleway',fontWeight:700,letterSpacing:'0.1em'}}>ACEPTADO</span>
           </div>
-        </div>
+        ) : (
+          <div style={{background:C.glass, backdropFilter:'blur(12px)', border:`1px solid ${C.cardBorder}`, borderRadius:'16px', padding:'18px', textAlign:'center'}}>
+            <p style={{fontSize:'14px', color:C.gray, fontFamily:'Teko', letterSpacing:'1px', margin:0}}>NO HAY PARTIDOS PRÓXIMOS</p>
+          </div>
+        )}
       </div>
 
       {/* Retos activos */}
       <div style={{padding:'16px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
-          <p style={{fontSize:'11px',color:C.gray,fontFamily:'Raleway',fontWeight:400,letterSpacing:'0.2em',textTransform:'uppercase',margin:0}}>Retos activos</p>
-          <span style={{fontSize:'22px',cursor:'pointer'}}>🔔</span>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
+          <p style={{fontSize:'11px', color:C.gray, fontFamily:'Teko', letterSpacing:'0.2em', textTransform:'uppercase', margin:0}}>Retos disponibles</p>
+          <span style={{fontSize:'22px', cursor:'pointer'}}>🔔</span>
         </div>
 
-        {[
-          {ini:'LB', nombre:'Los Búfalos', fecha:'Sáb 14 jun · 8:00am', estado:'PENDIENTE', estadoColor:C.amber},
-          {ini:'TC', nombre:'Team Coyol', fecha:'Dom 15 jun · 4:00pm', estado:'ACEPTADO', estadoColor:C.green},
-        ].map(r => (
-          <div key={r.nombre} style={{background:C.card,backdropFilter:'blur(8px)',border:`1px solid ${C.cardBorder}`,borderRadius:'12px',padding:'14px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-              <div style={{width:'42px',height:'42px',borderRadius:'8px',background:C.greenDim,border:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontFamily:'Raleway',fontWeight:700,color:C.green}}>{r.ini}</div>
+        {cargando ? (
+          <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>Cargando...</p>
+        ) : retos.length === 0 ? (
+          <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>No hay retos pendientes</p>
+        ) : retos.map(r => (
+          <div key={r.id} style={{background:C.card, backdropFilter:'blur(8px)', border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'14px', marginBottom:'8px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+              <div style={{width:'42px', height:'42px', borderRadius:'8px', background:C.greenDim, border:`1px solid ${C.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontFamily:'Teko', fontWeight:700, color:C.green}}>
+                {r.equipos?.nombre?.charAt(0) || '?'}
+              </div>
               <div>
-                <p style={{fontSize:'17px',fontFamily:'Raleway',fontWeight:400,margin:0,color:C.white}}>{r.nombre}</p>
-                <p style={{fontSize:'11px',color:C.gray,margin:0}}>{r.fecha}</p>
+                <p style={{fontSize:'17px', fontFamily:'Raleway', fontWeight:400, margin:0, color:C.white}}>{r.equipos?.nombre || 'Equipo'}</p>
+                <p style={{fontSize:'11px', color:C.gray, margin:0}}>{r.fecha} · {r.hora} · {r.zona}</p>
               </div>
             </div>
-            <span style={{fontSize:'10px',padding:'4px 10px',borderRadius:'4px',border:`1px solid ${r.estadoColor}`,color:r.estadoColor,fontFamily:'Raleway',fontWeight:400,letterSpacing:'0.1em'}}>{r.estado}</span>
+            <span style={{fontSize:'10px', padding:'4px 10px', borderRadius:'4px', border:`1px solid ${C.amber}`, color:C.amber, fontFamily:'Teko', letterSpacing:'0.1em'}}>PENDIENTE</span>
           </div>
         ))}
 
-        <button style={{width:'100%',background:C.green,color:'#000',border:'none',borderRadius:'12px',padding:'16px',fontSize:'18px',fontFamily:'Teko',fontWeight:700,letterSpacing:'1px',cursor:'pointer',marginTop:'8px'}}>
+        <button style={{width:'100%', background:C.green, color:'#000', border:'none', borderRadius:'12px', padding:'16px', fontSize:'18px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer', marginTop:'8px'}}>
           + LANZAR NUEVO RETO
         </button>
       </div>
@@ -74,7 +118,7 @@ function Home() {
   )
 }
 
-function Retos({ usuario }) {
+function Retos({ usuario, equipo }) {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [retos, setRetos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -86,18 +130,22 @@ function Retos({ usuario }) {
 
   const cargarRetos = async () => {
     setCargando(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('retos')
       .select('*, equipos(nombre, zona)')
       .eq('estado', 'pendiente')
       .order('created_at', { ascending: false })
-    if (!error) setRetos(data)
+    if (data) setRetos(data)
     setCargando(false)
   }
 
   const enviarReto = async () => {
     if (!nuevoReto.fecha || !nuevoReto.hora || !nuevoReto.zona) {
       alert('Completá todos los campos')
+      return
+    }
+    if (!equipo) {
+      alert('Necesitás tener un equipo para enviar retos')
       return
     }
     const { error } = await supabase
@@ -107,7 +155,7 @@ function Retos({ usuario }) {
         hora: nuevoReto.hora,
         zona: nuevoReto.zona,
         estado: 'pendiente',
-        equipo_retador_id: null
+        equipo_retador_id: equipo.id
       }])
     if (error) {
       alert('Error: ' + error.message)
@@ -121,10 +169,12 @@ function Retos({ usuario }) {
   const responder = async (retoId, respuesta) => {
     const { error } = await supabase
       .from('reto_respuestas')
-      .insert([{ reto_id: retoId, equipo_id: null, respuesta }])
+      .insert([{ reto_id: retoId, equipo_id: equipo?.id || null, respuesta }])
     if (!error) {
       if (respuesta === 'aceptado') {
         await supabase.from('retos').update({ estado: 'aceptado' }).eq('id', retoId)
+      } else {
+        await supabase.from('retos').update({ estado: 'rechazado' }).eq('id', retoId)
       }
       cargarRetos()
     }
@@ -133,49 +183,55 @@ function Retos({ usuario }) {
   return (
     <div style={{background:'#0d1117', minHeight:'100vh', padding:'24px 16px'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
-        <h1 style={{fontSize:'42px', fontFamily:'Teko', fontWeight:700, color:'#ffffff', margin:0, letterSpacing:'2px'}}>RETOS</h1>
-        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{background:'#2ecc40', color:'#000', border:'none', borderRadius:'8px', padding:'8px 18px', fontSize:'16px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>+ NUEVO</button>
+        <h1 style={{fontSize:'42px', fontFamily:'Teko', fontWeight:700, color:C.white, margin:0, letterSpacing:'2px'}}>RETOS</h1>
+        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'8px 18px', fontSize:'16px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>+ NUEVO</button>
       </div>
 
       {mostrarFormulario && (
-        <div style={{background:'rgba(0,20,0,0.6)', backdropFilter:'blur(12px)', border:'1px solid rgba(46,204,64,0.15)', borderRadius:'16px', padding:'18px', marginBottom:'16px'}}>
-          <p style={{fontSize:'18px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', marginBottom:'14px', color:'#ffffff'}}>LANZAR RETO</p>
-          <p style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', margin:'0 0 6px'}}>Fecha</p>
+        <div style={{background:C.glass, backdropFilter:'blur(12px)', border:`1px solid ${C.cardBorder}`, borderRadius:'16px', padding:'18px', marginBottom:'16px'}}>
+          <p style={{fontSize:'18px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', marginBottom:'6px', color:C.white}}>LANZAR RETO</p>
+          <p style={{fontSize:'12px', color:C.gray, margin:'0 0 14px'}}>Tu equipo: <span style={{color:C.green}}>{equipo?.nombre || 'Sin equipo'}</span></p>
+          <p style={{fontSize:'12px', color:C.gray, margin:'0 0 6px'}}>Fecha</p>
           <input type="date"
             value={nuevoReto.fecha}
             onChange={e => setNuevoReto({...nuevoReto, fecha:e.target.value})}
-            style={{width:'100%', padding:'12px', borderRadius:'8px', border:'1px solid rgba(46,204,64,0.15)', marginBottom:'10px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:'#ffffff'}} />
-          <p style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', margin:'0 0 6px'}}>Hora</p>
+            style={{width:'100%', padding:'12px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'10px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}} />
+          <p style={{fontSize:'12px', color:C.gray, margin:'0 0 6px'}}>Hora</p>
           <input type="time"
             value={nuevoReto.hora}
             onChange={e => setNuevoReto({...nuevoReto, hora:e.target.value})}
-            style={{width:'100%', padding:'12px', borderRadius:'8px', border:'1px solid rgba(46,204,64,0.15)', marginBottom:'10px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:'#ffffff'}} />
-          <p style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', margin:'0 0 6px'}}>Zona</p>
+            style={{width:'100%', padding:'12px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'10px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}} />
+          <p style={{fontSize:'12px', color:C.gray, margin:'0 0 6px'}}>Zona</p>
           <input type="text" placeholder="Ej: Heredia"
             value={nuevoReto.zona}
             onChange={e => setNuevoReto({...nuevoReto, zona:e.target.value})}
-            style={{width:'100%', padding:'12px', borderRadius:'8px', border:'1px solid rgba(46,204,64,0.15)', marginBottom:'14px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:'#ffffff'}} />
-          <button onClick={enviarReto} style={{width:'100%', background:'#2ecc40', color:'#000', border:'none', borderRadius:'8px', padding:'14px', fontSize:'18px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>ENVIAR RETO ⚡</button>
+            style={{width:'100%', padding:'12px', borderRadius:'8px', border:`1px solid ${C.cardBorder}`, marginBottom:'14px', fontSize:'13px', background:'rgba(255,255,255,0.05)', color:C.white}} />
+          <button onClick={enviarReto} style={{width:'100%', background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'14px', fontSize:'18px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>ENVIAR RETO ⚡</button>
         </div>
       )}
 
-      <p style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', fontFamily:'Teko', letterSpacing:'0.2em', marginBottom:'12px'}}>RETOS DISPONIBLES</p>
+      <p style={{fontSize:'11px', color:C.gray, fontFamily:'Teko', letterSpacing:'0.2em', marginBottom:'12px'}}>RETOS DISPONIBLES</p>
 
       {cargando ? (
-        <p style={{color:'rgba(255,255,255,0.5)', textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>Cargando retos...</p>
+        <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>Cargando retos...</p>
       ) : retos.length === 0 ? (
-        <p style={{color:'rgba(255,255,255,0.5)', textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>No hay retos pendientes</p>
+        <p style={{color:C.gray, textAlign:'center', fontFamily:'Teko', fontSize:'16px'}}>No hay retos pendientes</p>
       ) : retos.map(r => (
-        <div key={r.id} style={{background:'rgba(255,255,255,0.05)', backdropFilter:'blur(8px)', border:'1px solid rgba(46,204,64,0.15)', borderRadius:'12px', padding:'16px', marginBottom:'8px'}}>
+        <div key={r.id} style={{background:C.card, backdropFilter:'blur(8px)', border:`1px solid ${C.cardBorder}`, borderRadius:'12px', padding:'16px', marginBottom:'8px'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
-            <p style={{fontSize:'18px', fontFamily:'Raleway', fontWeight:400, margin:0, color:'#ffffff'}}>{r.equipos?.nombre || 'Equipo sin nombre'}</p>
-            <span style={{fontSize:'10px', padding:'4px 10px', borderRadius:'4px', border:'1px solid #ffaa00', color:'#ffaa00', fontFamily:'Teko', letterSpacing:'0.1em'}}>PENDIENTE</span>
+            <p style={{fontSize:'18px', fontFamily:'Raleway', fontWeight:400, margin:0, color:C.white}}>{r.equipos?.nombre || 'Equipo sin nombre'}</p>
+            <span style={{fontSize:'10px', padding:'4px 10px', borderRadius:'4px', border:`1px solid ${C.amber}`, color:C.amber, fontFamily:'Teko', letterSpacing:'0.1em'}}>PENDIENTE</span>
           </div>
-          <p style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', margin:'0 0 14px'}}>📅 {r.fecha} · {r.hora} · 📍 {r.zona}</p>
-          <div style={{display:'flex', gap:'8px'}}>
-            <button onClick={() => responder(r.id, 'aceptado')} style={{flex:1, background:'#2ecc40', color:'#000', border:'none', borderRadius:'8px', padding:'10px', fontSize:'15px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>✅ ACEPTAR</button>
-            <button onClick={() => responder(r.id, 'rechazado')} style={{flex:1, background:'transparent', color:'#ff3b3b', border:'1px solid #ff3b3b', borderRadius:'8px', padding:'10px', fontSize:'15px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>❌ RECHAZAR</button>
-          </div>
+          <p style={{fontSize:'12px', color:C.gray, margin:'0 0 14px'}}>📅 {r.fecha} · {r.hora} · 📍 {r.zona}</p>
+          {equipo?.id !== r.equipo_retador_id && (
+            <div style={{display:'flex', gap:'8px'}}>
+              <button onClick={() => responder(r.id, 'aceptado')} style={{flex:1, background:C.green, color:'#000', border:'none', borderRadius:'8px', padding:'10px', fontSize:'15px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>✅ ACEPTAR</button>
+              <button onClick={() => responder(r.id, 'rechazado')} style={{flex:1, background:'transparent', color:C.red, border:`1px solid ${C.red}`, borderRadius:'8px', padding:'10px', fontSize:'15px', fontFamily:'Teko', fontWeight:700, letterSpacing:'1px', cursor:'pointer'}}>❌ RECHAZAR</button>
+            </div>
+          )}
+          {equipo?.id === r.equipo_retador_id && (
+            <p style={{fontSize:'12px', color:C.green, margin:0, fontFamily:'Teko', letterSpacing:'0.5px'}}>✅ ESTE ES TU RETO</p>
+          )}
         </div>
       ))}
     </div>
@@ -385,6 +441,7 @@ function MiEquipo({ usuario, equipo, onEquipoActualizado }) {
     </div>
   )
 }
+
 function Canchas() {
   const [canchas, setCanchas] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -524,6 +581,7 @@ export default function App() {
           <Route path="/retos" element={<Retos usuario={usuario} equipo={equipo} />} />
           <Route path="/equipo" element={<MiEquipo usuario={usuario} equipo={equipo} onEquipoActualizado={setEquipo} />} />
           <Route path="/canchas" element={<Canchas />} />
+          <Route path="/admin/canchas" element={<AdminCanchas />} />
         </Routes>
         <NavBar />
       </div>

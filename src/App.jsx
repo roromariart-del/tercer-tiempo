@@ -28,9 +28,16 @@ function Home({ usuario, equipo }) {
   const [proximoPartido, setProximoPartido] = useState(null)
   const [cargando, setCargando] = useState(true)
 
-  useEffect(() => {
-    if (equipo) cargarDatos()
-  }, [equipo])
+ useEffect(() => {
+   const u = localStorage.getItem('usuario_tt') || sessionStorage.getItem('usuario_tt')
+   if (u) {
+     const usuarioParsed = JSON.parse(u)
+     setUsuario(usuarioParsed)
+     cargarEquipo(usuarioParsed)
+   } else {
+     setVerificando(false)
+   }
+ }, [])
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -551,9 +558,10 @@ export default function App() {
   }
 
   const handleLogin = (u) => {
-    localStorage.setItem('usuario_tt', JSON.stringify(u))
-    setUsuario(u)
-    cargarEquipo(u)
+   localStorage.setItem('usuario_tt', JSON.stringify(u))
+   sessionStorage.setItem('usuario_tt', JSON.stringify(u))
+   setUsuario(u)
+   cargarEquipo(u)
   }
 
   const handleEquipoCreado = (e) => {

@@ -28,16 +28,9 @@ function Home({ usuario, equipo }) {
   const [proximoPartido, setProximoPartido] = useState(null)
   const [cargando, setCargando] = useState(true)
 
- useEffect(() => {
-   const u = localStorage.getItem('usuario_tt') || sessionStorage.getItem('usuario_tt')
-   if (u) {
-     const usuarioParsed = JSON.parse(u)
-     setUsuario(usuarioParsed)
-     cargarEquipo(usuarioParsed)
-   } else {
-     setVerificando(false)
-   }
- }, [])
+  useEffect(() => {
+    if (equipo) cargarDatos()
+  }, [equipo])
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -534,34 +527,41 @@ export default function App() {
   const [equipo, setEquipo] = useState(null)
   const [verificando, setVerificando] = useState(true)
 
- useEffect(() => {
-  const u = localStorage.getItem('usuario_tt')
-  if (u) {
-    const usuarioParsed = JSON.parse(u)
-    setUsuario(usuarioParsed)
-    cargarEquipo(usuarioParsed)
-  } else {
-    setVerificando(false)
-  } 
- }, [])
+  useEffect(() => {
+    iniciar()
+  }, [])
 
-  const cargarEquipo = async (u) => {
-    if (u.equipo_id) {
-      const { data } = await supabase
-        .from('equipos')
-        .select('*, equipo_jugadores(*, usuarios(*))')
-        .eq('id', u.equipo_id)
-        .single()
-      if (data) setEquipo(data)
+  const iniciar = async () => {
+    try {
+      const guardado = localStorage.getItem('usuario_tt')
+      if (!guardado) {
+        setVerificando(false)
+        return
+      }
+      const u = JSON.parse(guardado)
+      setUsuario(u)
+      if (u.equipo_id) {
+        const { data } = await supabase
+          .from('equipos')
+          .select('*')
+          .eq('id', u.equipo_id)
+          .single()
+        if (data) setEquipo(data)
+      }
+    } catch (e) {
+      localStorage.clear()
+    } finally {
+      setVerificando(false)
     }
-    setVerificando(false)
   }
 
   const handleLogin = (u) => {
-   localStorage.setItem('usuario_tt', JSON.stringify(u))
-   sessionStorage.setItem('usuario_tt', JSON.stringify(u))
-   setUsuario(u)
-   cargarEquipo(u)
+    localStorage.setItem('usuario_tt', JSON.stringify(u))
+    setUsuario(u)
+    if (u.equipo_id) {
+      supabase.from('equipos').select('*').eq('id', u.equipo_id).single()
+        .then(({ data }) => { if (data) setEquipo(data) })
+    }
   }
 
   const handleEquipoCreado = (e) => {
@@ -569,7 +569,7 @@ export default function App() {
     const u = JSON.parse(localStorage.getItem('usuario_tt'))
     u.equipo_id = e.id
     localStorage.setItem('usuario_tt', JSON.stringify(u))
-    setUsuario(u)
+    setUsuario({...u})
   }
 
   if (verificando) return (

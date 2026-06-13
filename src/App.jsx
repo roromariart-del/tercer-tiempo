@@ -4,6 +4,7 @@ import { supabase } from './supabase.js'
 import Login from './pages/Login.jsx'
 import CrearEquipo from './pages/CrearEquipo.jsx'
 import AdminCanchas from './pages/AdminCanchas.jsx'
+import { IconHome, IconTrophy, IconShirt, IconMapPin } from '@tabler/icons-react'
 
 const C = {
   bg: '#060d06',
@@ -334,16 +335,16 @@ function Canchas() {
 function NavBar() {
   const location = useLocation()
   const links = [
-    {to:'/', icon:'🏠', label:'INICIO'},
-    {to:'/retos', icon:'⚔️', label:'RETOS'},
-    {to:'/equipo', icon:'👥', label:'EQUIPO'},
-    {to:'/canchas', icon:'📍', label:'CANCHAS'},
+    {to:'/', icon:<IconHome size={24} />, label:'INICIO'},
+    {to:'/retos', icon:<IconTrophy size={24} />, label:'RETOS'},
+    {to:'/equipo', icon:<IconShirt size={24} />, label:'EQUIPO'},
+    {to:'/canchas', icon:<IconMapPin size={24} />, label:'CANCHAS'},
   ]
   return (
     <nav style={{position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:'480px', background:'rgba(6,13,6,0.95)', backdropFilter:'blur(12px)', borderTop:`1px solid ${C.cardBorder}`, display:'flex', justifyContent:'space-around', padding:'10px 0 14px'}}>
       {links.map(l => (
         <Link key={l.to} to={l.to} style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'3px', textDecoration:'none', color:location.pathname===l.to?C.green:'rgba(255,255,255,0.3)', flex:1}}>
-          <span style={{fontSize:'20px'}}>{l.icon}</span>
+          <span>{l.icon}</span>
           <span style={{fontSize:'9px', fontFamily:'Raleway', fontWeight:400, letterSpacing:'0.1em'}}>{l.label}</span>
         </Link>
       ))}

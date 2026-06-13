@@ -398,7 +398,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div style={{maxWidth:'480px', margin:'0 auto', minHeight:'100vh', background:C.bg, paddingBottom:'70px'}}>
+      <div style={{width:'100%', maxWidth:'100vw', minHeight:'100vh', background:C.bg, paddingBottom:'70px'}}>
         <Routes>
           <Route path="/" element={<Home usuario={usuario} equipo={equipo} />} />
           <Route path="/retos" element={<Retos usuario={usuario} equipo={equipo} />} />

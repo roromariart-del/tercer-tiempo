@@ -358,24 +358,29 @@ export default function App() {
   const [verificando, setVerificando] = useState(true)
 
   useEffect(() => {
-    const guardado = localStorage.getItem('usuario_tt')
-    if (guardado) {
-      const u = JSON.parse(guardado)
-      setUsuario(u)
-      if (u.equipo_id) {
-        supabase.from('equipos').select('*').eq('id', u.equipo_id).single()
-          .then(({ data }) => { if (data) setEquipo(data) })
-          .finally(() => setVerificando(false))
+    try {
+      const guardado = localStorage.getItem('usuario_tt') || sessionStorage.getItem('usuario_tt')
+      if (guardado) {
+        const u = JSON.parse(guardado)
+        setUsuario(u)
+        if (u.equipo_id) {
+          supabase.from('equipos').select('*').eq('id', u.equipo_id).single()
+            .then(({ data }) => { if (data) setEquipo(data) })
+            .finally(() => setVerificando(false))
+        } else {
+          setVerificando(false)
+        }
       } else {
         setVerificando(false)
       }
-    } else {
+    } catch(e) {
       setVerificando(false)
     }
   }, [])
 
   const handleLogin = (u) => {
     localStorage.setItem('usuario_tt', JSON.stringify(u))
+    sessionStorage.setItem('usuario_tt', JSON.stringify(u))
     setUsuario(u)
     setVerificando(false)
   }
@@ -390,7 +395,7 @@ export default function App() {
 
   if (verificando) return (
     <div style={{background:'#060d06', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>
-      <p style={{color:'#2ecc40', fontFamily:'Teko', fontSize:'24px', letterSpacing:'2px'}}>CARGANDO...</p>
+      <p style={{color:'#077914', fontFamily:'Teko', fontSize:'24px', letterSpacing:'2px'}}>CARGANDO...</p>
     </div>
   )
 
